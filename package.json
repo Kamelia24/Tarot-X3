@@ -1,0 +1,22 @@
+{
+    "name": "pixi-card-game",
+    "version": "1.0.0",
+    "scripts": {
+      "dev": "vite",
+      "build": "vite build",
+      "preview": "vite preview",
+      "lint": "eslint --ext .ts ./src"
+    },
+    "dependencies": {
+      "pixi.js": "^8.3.0"
+    },
+    "devDependencies": {
+      "typescript": "^5.1.0",
+      "vite": "^4.5.0",
+      "eslint": "^8.50.0",
+      "@typescript-eslint/parser": "^6.2.0",
+      "@typescript-eslint/eslint-plugin": "^6.2.0",
+      "prettier": "^3.0.0"
+    }
+  }
+  
