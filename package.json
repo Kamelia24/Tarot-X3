@@ -1,22 +1,17 @@
 {
-    "name": "pixi-card-game",
-    "version": "1.0.0",
-    "scripts": {
-      "dev": "vite",
-      "build": "vite build",
-      "preview": "vite preview",
-      "lint": "eslint --ext .ts ./src"
-    },
-    "dependencies": {
-      "pixi.js": "^8.3.0"
-    },
-    "devDependencies": {
-      "typescript": "^5.1.0",
-      "vite": "^4.5.0",
-      "eslint": "^8.50.0",
-      "@typescript-eslint/parser": "^6.2.0",
-      "@typescript-eslint/eslint-plugin": "^6.2.0",
-      "prettier": "^3.0.0"
-    }
+  "name": "pixi-card-flip",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "pixi-projection": "^1.0.0",
+    "pixi.js": "^7.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^4.5.14"
   }
-  
+}

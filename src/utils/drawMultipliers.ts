@@ -1,15 +1,13 @@
-import type { MultiplierEntry } from '../types';
+import data from '../data/multipliers.json';
 
-export function drawMultiplier(entries: MultiplierEntry[]): number {
-  const totalWeight = entries.reduce((s, e) => s + e.weight, 0);
-  let r = Math.random() * totalWeight;
+export function drawMultiplier(): number {
+  const total = data.reduce((s, m) => s + m.weight, 0);
+  let r = Math.random() * total;
 
-  for (const entry of entries) {
-    r -= entry.weight;
-    if (r <= 0) {
-      return entry.value;
-    }
+  for (const m of data) {
+    if (r < m.weight) return m.value;
+    r -= m.weight;
   }
 
-  return entries[entries.length - 1].value;
+  return data[0].value;
 }

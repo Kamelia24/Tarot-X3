@@ -1,215 +1,132 @@
-import { StateMachine } from "./StateMachine";
+import { Application, Resource, Text, TextStyle, Texture } from "pixi.js";
+import { Camera3d, Container3d } from "pixi-projection";
 import { Card } from "./Card";
-import multiplierData from './data/multipliers.json';
-import { drawMultiplier } from "./utils/drawMultipliers";
-import type { MultiplierEntry } from './types';
-import { Text, Container, colorBitGl, Texture, Sprite, Assets, Spritesheet } from 'pixi.js';
+import multipliersData from "./data/multipliers.json";
+import { StateMachine } from "./StateMachine";
 import { delay } from "./utils/utility";
 
-
-/**
- * Game states
- */
-export enum GameState {
-  INIT = "INIT",
-  IDLE = "IDLE",
-  ROUND_START = "ROUND_START",
-  REVEAL = "REVEAL",
-  RESULT = "RESULT",
-}
-
 export class Game {
-  private stateMachine!: StateMachine<GameState>;
-  private playRequested = false;
-  private globalMultiplierValue = 0;
-  private globalText!: Text;
-  private globalPosition!: { x: number; y: number; };
+  app: Application;
+  camera: Camera3d;
+  cards: Card[] = [];
+  multipliers = multipliersData;
+  stateMachine = new StateMachine();
 
-  private multiplierTable: MultiplierEntry[] = multiplierData.multipliers;
-  screenWidth: number;
-  screenHeight: number;
-  betText: Text;
-  totalText: Text;
-  constructor(
-    private readonly cards: Card[],
-    private readonly button: HTMLImageElement,
-    private readonly uiContainer: Container,
-    screenWidth: number,
-    screenHeight: number,
-  ) {
-    this.button.onclick = () => {
-      this.playRequested = true;
-    };
+  globalMultiplierText: Text;
 
-    this.createStateMachine();
+  constructor(app: Application) {
+    this.app = app;
+    this.camera = new Camera3d();
+    this.camera.position.set(app.screen.width / 2, app.screen.height / 2 - 50);
+    this.camera.position.z = -200;
+    this.camera.euler.x = 0.8;
+    this.camera.setPlanes(1000, 50, 2000);
+    this.app.stage.addChild(this.camera);
 
-    this.screenWidth = screenWidth;
-    this.screenHeight = screenHeight;
-
-    this.globalPosition = {
-      x: window.innerWidth / 2,
-      y: 120,
-    };
-
-    this.betText = new Text('Game bet: 2.00',  {
-      fontSize: 70,
-      fill: "#fff700",
-      fontFamily: "Georgia",
-      fontStyle: "italic",
-      fontWeight: 'bold',
-      padding: 10,
-      stroke: "#ff9500",
-      trim: true
-  });
-    
-    this.betText.anchor.set(0.5);
-    this.betText.position.set(
-      this.globalPosition.x,
-      this.globalPosition.y - 80
-    );
-    
-    this.uiContainer.addChild(this.betText);
-
-    this.totalText = new Text('Total: ',  {
-      fontSize: 70,
-      fill: "#fff700",
-      fontFamily: "Georgia",
-      fontStyle: "italic",
-      fontWeight: 'bold',
-      padding: 10,
-      stroke: "#ff9500",
-      trim: true
-  });
-    
-    this.totalText.anchor.set(0.5);
-    this.totalText.position.set(
-      this.globalPosition.x -180,
-      this.globalPosition.y
-    );
-    
-    this.uiContainer.addChild(this.totalText);
-    
-    this.globalText = new Text('0.00',  {
-      fontSize: 70,
-      fill: "#fff700",
-      fontFamily: "Georgia",
-      fontStyle: "italic",
-      fontWeight: 'bold',
-      padding: 10,
-      stroke: "#ff9500",
-      trim: true
-  });
-    
-    this.globalText.anchor.set(0.5);
-    this.globalText.position.set(
-      this.globalPosition.x + 30,
-      this.globalPosition.y
-    );
-    
-    // this.globalText.alpha = 0;
-    
-    this.uiContainer.addChild(this.globalText);
-    
+    this.globalMultiplierText = new Text("", new TextStyle({
+      fontSize: 60,
+      fontWeight: "bold",
+      fill: "#ffeb3b",
+      align: "center"
+    }));
+    this.globalMultiplierText.anchor.set(0.5);
+    this.globalMultiplierText.position.set(app.screen.width / 2, 100);
+    this.globalMultiplierText.visible = false;
+    this.app.stage.addChild(this.globalMultiplierText);
   }
 
-  /**
-   * Called once when app is ready
-   */
-  start(): void {
-    this.stateMachine.start(GameState.INIT);
-  }
-
-  private createStateMachine(): void {
-    this.stateMachine = new StateMachine<GameState>({
-      [GameState.INIT]: async () => {
-        await this.loadAssets();
-        this.layoutCards();
-        return GameState.IDLE;
-      },
-  
-      [GameState.IDLE]: async () => {
-        this.playRequested = false;
-        this.globalMultiplierValue = 0;
-
-        await this.waitForPlayClick();
-        return GameState.ROUND_START;
-      },
-
-      [GameState.ROUND_START]: async () => {
-        await Promise.all(
-          this.cards.map(card => card.flipToFront())
-        );
-        return GameState.REVEAL;
-      },
-
-      [GameState.REVEAL]: async () => {
-        for (const card of this.cards) {
-          const value = drawMultiplier(this.multiplierTable);
-      
-          card.setMultiplier(value);
-          await card.showMultiplier();
-        }
-        return GameState.RESULT;
-      },
-            
-
-      [GameState.RESULT]: async () => {
-        let globalMultiplier = 1;
-      
-        for (const card of this.cards) {
-          const value = await card.flyMultiplierToGlobal(this.globalPosition);
-          globalMultiplier *= value;
-      
-          this.globalText.text = `${globalMultiplier.toFixed(2)}`;
-          this.globalText.alpha = 1;
-        }
-      
-        await delay(2500);
-        await this.resetCards();
-        this.globalText.text = '0.00';
-        // this.globalText.alpha = 0;
-      
-        return GameState.IDLE;
-      },
-      
-      
-    });
-  }
-
-  private waitForPlayClick(): Promise<void> {
-    return new Promise(resolve => {
-      const check = () => {
-        if (this.playRequested) {
-          resolve();
-        } else {
-          requestAnimationFrame(check);
-        }
-      };
-      check();
-    });
-  }
-
-  private async loadAssets(): Promise<void> {
-    return;
-  }
-
-  private layoutCards(): void {
-    const cardCount = this.cards.length;
-  
-    const spacing = 300;
-      const cx = this.screenWidth / 2;
-      const cy = this.screenHeight / 2 + 40;
-  
+  addCards(frontTex: Texture, backTex: Texture) {
+    this.cards = [
+      new Card(frontTex, backTex),
+      new Card(frontTex, backTex),
+      new Card(frontTex, backTex),
+    ];
+    const spacing = 200;
+    const startX = -spacing;
     this.cards.forEach((card, i) => {
-      const offset = (i - (cardCount - 1) / 2) * spacing;
-      card.updatePosition(cx + offset , cy);
+      card.position3d.x = startX + i * spacing;
+      this.camera.addChild(card);
     });
-
   }
 
-  private async resetCards(): Promise<void> {
+  pickMultiplier(): number {
+    const total = this.multipliers.reduce((sum, m) => sum + m.weight, 0);
+    let rand = Math.random() * total;
+    for (const m of this.multipliers) {
+      if (rand < m.weight) return m.value;
+      rand -= m.weight;
+    }
+    return this.multipliers[0].value;
+  }
+
+  private async flipAllFront() {
     await Promise.all(
-      this.cards.map(card => card.flipToBack())
+      this.cards.map(
+        (c) =>
+          new Promise<void>((resolve) => {
+            const update = () => {
+              c.update(() => resolve());
+              if (c.flipping) requestAnimationFrame(update);
+            };
+            c.flipToFront();
+            update();
+          })
+      )
     );
+  }
+
+  private async flipAllBack() {
+    await Promise.all(
+      this.cards.map(
+        (c) =>
+          new Promise<void>((resolve) => {
+            const update = () => {
+              c.update(() => resolve());
+              if (c.flipping) requestAnimationFrame(update);
+            };
+            c.flipToBack();
+            update();
+          })
+      )
+    );
+  }
+
+  public async startRound() {
+    if (this.stateMachine.getState() !== "IDLE") {
+      return;
+    }
+    await this.stateMachine.enterState("ROUND_START", async () => {
+      await this.flipAllFront();
+    });
+
+    await this.stateMachine.enterState("REVEAL", async () => {
+      this.cards.forEach((c) => {
+        const mult = this.pickMultiplier();
+        c.setMultiplier(mult);
+        c.multiplierText.visible = false;
+      });
+
+      await delay(500);
+      this.cards.forEach((c) => (c.multiplierText.visible = true));
+    });
+
+    await this.stateMachine.enterState("RESULT", async () => {
+      let total = 1;
+      this.cards.forEach((c) => {
+        const num = parseFloat(c.multiplierText.text.replace("x", "")) || 1;
+        total *= num;
+      });
+      this.globalMultiplierText.text = `x${total}`;
+      this.globalMultiplierText.visible = true;
+      await delay(1500);
+    });
+
+    await this.stateMachine.enterState("BACK", async () => {
+      this.globalMultiplierText.visible = false;
+
+      await this.flipAllBack();
+    });
+
+    await this.stateMachine.enterState("IDLE");
   }
 }

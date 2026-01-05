@@ -1,29 +1,27 @@
-export class StateMachine<S extends string> {
-    private currentState!: S;
-    private running = false;
-  
-    constructor(
-      private readonly states: Record<S, () => Promise<S | void>>
-    ) {}
-  
-    async start(initialState: S) {
-      this.running = true;
-      this.currentState = initialState;
-  
-      while (this.running) {
-        const next = await this.states[this.currentState]();
-  
-        if (!next) {
-          this.running = false;
-          return;
-        }
-  
-        this.currentState = next;
-      }
-    }
-  
-    stop() {
-      this.running = false;
+export type GameState = "IDLE" | "ROUND_START" | "REVEAL" | "RESULT" | "BACK";
+
+export class StateMachine {
+  private state: GameState = "IDLE";
+
+  public getState() {
+    return this.state;
+  }
+
+  private setState(newState: GameState) {
+    this.state = newState;
+    console.log("Game State:", newState);
+  }
+
+  public async run(steps: (() => Promise<void>)[]) {
+    for (const step of steps) {
+      await step();
     }
   }
-  
+
+  public async enterState(state: GameState, callback?: () => Promise<void>) {
+    this.setState(state);
+    if (callback) {
+      await callback();
+    }
+  }
+}

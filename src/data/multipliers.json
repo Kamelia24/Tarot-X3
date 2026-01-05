@@ -1,5 +1,4 @@
-{
-    "multipliers": [
+   [
       { "value": 0, "weight": 19 },
       { "value": 0.3, "weight": 50 },
       { "value": 0.6, "weight": 15 },
@@ -10,5 +9,5 @@
       { "value": 5, "weight": 6 },
       { "value": 10, "weight": 3 }
     ]
-  }
+
   
